@@ -1,0 +1,121 @@
+[[servlet-saml2login-metadata]]
+= Saml 2.0 Metadata
+
+Spring Security can <<parsing-asserting-party-metadata,parse asserting party metadata>> to produce an `AssertingPartyDetails` instance as well as <<publishing-relying-party-metadata,publish relying party metadata>> from a `RelyingPartyRegistration` instance.
+
+[[parsing-asserting-party-metadata]]
+== Parsing `<saml2:IDPSSODescriptor>` metadata
+
+You can parse an asserting party's metadata xref:servlet/saml2/login/overview.adoc#servlet-saml2login-relyingpartyregistrationrepository[using `RelyingPartyRegistrations`].
+
+When using the OpenSAML vendor support, the resulting `AssertingPartyDetails` will be of type `OpenSamlAssertingPartyDetails`.
+This means you'll be able to do get the underlying OpenSAML XMLObject by doing the following:
+
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+OpenSamlAssertingPartyDetails details = (OpenSamlAssertingPartyDetails)
+        registration.getAssertingPartyDetails();
+EntityDescriptor openSamlEntityDescriptor = details.getEntityDescriptor();
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+val details: OpenSamlAssertingPartyDetails =
+        registration.getAssertingPartyDetails() as OpenSamlAssertingPartyDetails;
+val openSamlEntityDescriptor: EntityDescriptor = details.getEntityDescriptor();
+----
+======
+
+[[publishing-relying-party-metadata]]
+== Producing `<saml2:SPSSODescriptor>` Metadata
+
+You can publish a metadata endpoint using the `saml2Metadata` DSL method, as you'll see below:
+
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+http
+    // ...
+    .saml2Login(withDefaults())
+    .saml2Metadata(withDefaults());
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+http {
+    //...
+    saml2Login { }
+    saml2Metadata { }
+}
+----
+======
+
+You can use this metadata endpoint to register your relying party with your asserting party.
+This is often as simple as finding the correct form field to supply the metadata endpoint.
+
+By default, the metadata endpoint is `+/saml2/metadata+`, though it also responds to `+/saml2/metadata/{registrationId}+` and `+/saml2/service-provider-metadata/{registrationId}+`.
+
+You can change this by calling the `metadataUrl` method in the DSL:
+
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+.saml2Metadata((saml2) -> saml2.metadataUrl("/saml/metadata"))
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+saml2Metadata {
+	metadataUrl = "/saml/metadata"
+}
+----
+======
+
+== Changing the Way a `RelyingPartyRegistration` Is Looked Up
+
+If you have a different strategy for identifying which `RelyingPartyRegistration` to use, you can configure your own `Saml2MetadataResponseResolver` like the one below:
+
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+@Bean
+Saml2MetadataResponseResolver metadataResponseResolver(RelyingPartyRegistrationRepository registrations) {
+	RequestMatcherMetadataResponseResolver metadata = new RequestMatcherMetadataResponseResolver(
+			(id) -> registrations.findByRegistrationId("relying-party"));
+	metadata.setMetadataFilename("metadata.xml");
+	return metadata;
+}
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+@Bean
+fun metadataResponseResolver(val registrations: RelyingPartyRegistrationRepository): Saml2MetadataResponseResolver {
+    val metadata = new RequestMatcherMetadataResponseResolver(
+			id: String -> registrations.findByRegistrationId("relying-party"))
+	metadata.setMetadataFilename("metadata.xml")
+	return metadata
+}
+----
+======
